@@ -22,6 +22,7 @@
 #include "config.h"
 #endif
 
+#include <dlfcn.h>
 #include <stdio.h>
 #include <string.h>
 #include <elf.h>
@@ -79,75 +80,33 @@ PHP_FUNCTION(confirm_sqreen_compiled)
 
 PHP_FUNCTION(fopen_sqreen)
 {
-    RETURN_STRING("Hello world");
+fopen_hook: printf("I am not fopen\n");
 }
+
+int64_t old_instruction;
+int64_t old_fopen;
 
 PHP_FUNCTION(sqreenOn)
 {
-int c;
-FILE *file;
-file = fopen("/proc/self/maps", "r");
-if (file) {
-    while ((c = getc(file)) != EOF)
-        putchar(c);
-    fclose(file);
-}
+	void *handle = dlopen(NULL, RTLD_NOW);
+	void *fopen = dlsym(handle, "zend_fopen");
+	printf("fopen: %p\n", fopen);
+	return;
+    int64_t *hook = (int64_t*)&fopen_hook;
+    int32_t offset = (int64_t)hook - ((int64_t)fopen + 5 * sizeof(char));
 
-  printf("Dynamic: %p\n", _DYNAMIC);
-  struct r_debug *rdebug = &_r_debug;
-//for (ElfW(Dyn) *dyn = _DYNAMIC; dyn->d_tag != DT_NULL; ++dyn)
-//  if (dyn->d_tag == DT_DEBUG)
-//    rdebug = (struct r_debug *) dyn->d_un.d_ptr;
-//// debug printing
-  printf("Rdebug: %p\n", _r_debug);
-  printf("Link map: %p\n", _r_debug);
-  printf("Version: %d\n", rdebug->r_version);
-  printf("State:   %s\n",
-      rdebug->r_state == RT_CONSISTENT ? "Consistent" :
-      rdebug->r_state == RT_ADD ? "Add" :
-      rdebug->r_state == RT_DELETE ? "Delete" :
-      "Unknown"
-      );
-  printf("\n");
+    //Make the memory containing the original funcion writable
+    //Code from http://stackoverflow.com/questions/20381812/mprotect-always-returns-invalid-arguments
+    size_t pageSize = sysconf(_SC_PAGESIZE);
+    uintptr_t start = (uintptr_t)origFunc;
+    uintptr_t end = start + 1;
+    uintptr_t pageStart = start & -pageSize;
+    mprotect((void *)pageStart, end - pageStart, PROT_READ | PROT_WRITE | PROT_EXEC);
 
-  struct link_map *link_map = rdebug->r_map;
-  for (; link_map != NULL; link_map = link_map->l_next)
-  {
-    printf("Actual shared object: %s\n", link_map->l_name);
-    printf("Addr: %30p\n", (void*)link_map->l_addr);
-    printf("Ld: %30p\n", link_map->l_ld);
-    // Get strtab
-    ElfW(Dyn) *strtab;
-    ElfW(Sym) *symtab;
-    for (ElfW(Dyn) *dynobj = link_map->l_ld; dynobj->d_tag != DT_NULL; ++dynobj)
-    {
-      if (dynobj->d_tag == DT_STRTAB)
-        strtab = (void*) dynobj->d_un.d_ptr;
-      if (dynobj->d_tag == DT_SYMTAB)
-        symtab = (void*) dynobj->d_un.d_ptr;
-    }
-    printf("strtab: %30p\n", strtab);
-    printf("symtab: %30p\n", symtab);
-
-    // if this is an offset
-    if (strcmp(link_map->l_name, ""))
-    {
-      continue;
-    }
-
-    // Parse all symbols
-    for (; symtab != (void*)strtab; ++symtab)
-    {
-      char *name = (char*)strtab + symtab->st_name;
-      if (strncmp(name, "printf", 6))
-      {
-        printf("Name: %s\n", name);
-        int (*print)(const char *format) = (void*) (link_map->l_addr + symtab->st_value);
-        print("hello");
-      }
-    }
-    printf("\n");
-  }
+    //Insert the jump instruction at the beginning of the original function
+    int64_t instruction = 0xe9 | offset << 8;
+    old_instruction = *fopen;
+    *fopen = instruction;
 }
 
 PHP_FUNCTION(sqreenOff)
