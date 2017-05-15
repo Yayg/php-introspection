@@ -94,12 +94,13 @@ if (file) {
 }
 
   printf("Dynamic: %p\n", _DYNAMIC);
-  struct r_debug *rdebug;
-  for (ElfW(Dyn) *dyn = _DYNAMIC; dyn->d_tag != DT_NULL; ++dyn)
-    if (dyn->d_tag == DT_DEBUG)
-      rdebug = (struct r_debug *) dyn->d_un.d_ptr;
-  // debug printing
+  struct r_debug *rdebug = &_r_debug;
+//for (ElfW(Dyn) *dyn = _DYNAMIC; dyn->d_tag != DT_NULL; ++dyn)
+//  if (dyn->d_tag == DT_DEBUG)
+//    rdebug = (struct r_debug *) dyn->d_un.d_ptr;
+//// debug printing
   printf("Rdebug: %p\n", _r_debug);
+  printf("Link map: %p\n", _r_debug);
   printf("Version: %d\n", rdebug->r_version);
   printf("State:   %s\n",
       rdebug->r_state == RT_CONSISTENT ? "Consistent" :
@@ -128,11 +129,11 @@ if (file) {
     printf("strtab: %30p\n", strtab);
     printf("symtab: %30p\n", symtab);
 
-  //// if this is an offset
-  //if (*(link_map->l_name) == '\0')
-  //{
-  //  continue;
-  //}
+    // if this is an offset
+    if (strcmp(link_map->l_name, ""))
+    {
+      continue;
+    }
 
     // Parse all symbols
     for (; symtab != (void*)strtab; ++symtab)
