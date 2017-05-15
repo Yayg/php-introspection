@@ -1,0 +1,13 @@
+// $Id$
+// vim:ft=javascript
+
+// If your extension references something external, use ARG_WITH
+// ARG_WITH("sqreen", "for sqreen support", "no");
+
+// Otherwise, use ARG_ENABLE
+// ARG_ENABLE("sqreen", "enable sqreen support", "no");
+
+if (PHP_SQREEN != "no") {
+	EXTENSION("sqreen", "sqreen.c", PHP_EXTNAME_SHARED, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
+}
+
