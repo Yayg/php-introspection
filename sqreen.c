@@ -80,73 +80,51 @@ PHP_FUNCTION(confirm_sqreen_compiled)
 
 PHP_FUNCTION(fopen_sqreen)
 {
+	printf("Calling fopen\n");
+
+  //zval *params = { to_zval, from_zval, msg_zval };
+  //zend_uint param_count = 3;
+  //zval *retval_ptr;
+
+  //zval function_name;
+  //INIT_ZVAL(function_name);
+  //ZVAL_STRING(&function_name, "mail", 1);
+
+  //if (call_user_function(
+  //			        CG(function_table), NULL /* no object */, &function_name,
+  //					        retval_ptr, param_count, params TSRMLS_CC
+  //							    ) == SUCCESS
+  //   ) {
+  //	    /* do something with retval_ptr here if you like */
+  //}
+
+  ///* don't forget to free the zvals */
+  //zval_ptr_dtor(&retval_ptr);
+  //zval_dtor(&function_name);
 }
 
 
 PHP_FUNCTION(sqreenOn)
 {
-	zend_function *func, *dummy_func;
-////char *old_fname, *new_fname, *old_fname, *new_fname;
-	char *old_fname = "fopen";
-	char *new_fname = "fopen_sqreen";
-	int old_fname_len = strlen(old_fname);
-	int new_fname_len = strlen(new_fname);
-	int i;
+	printf("Calling sqreenOn\n");
+	zval *fopen, *fopen_sqreen;
+	zend_string *s_fopen = zend_string_init("fopen", strlen("fopen"), 0);
+	zend_string *s_fopen_sqreen = zend_string_init("fopen_sqreen", strlen("fopen_sqreen"), 0);
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss",
-								&old_fname, &old_fname_len, &new_fname, &new_fname_len) == FAILURE) {
-		return;
-	}
+	// Getting functions from zend hashtable
+	fopen 		 = zend_hash_find(EG(function_table), s_fopen);
+	fopen_sqreen = zend_hash_find(EG(function_table), s_fopen_sqreen);
 
-  if (zend_hash_find(EG(function_table), old_fname, old_fname_len + 1, (void **) &func) == FAILURE) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s(%s, %s) failed: %s does not exist!",
-						get_active_function_name(TSRMLS_C),
-						old_fname,  new_fname, old_fname);
-		RETVAL_FALSE;
-		goto sqreenOn_end;
-	}
+	// Renaming fopen
+	zend_hash_del(EG(function_table), s_fopen);
+	zend_hash_add(EG(function_table), s_fopen_sqreen, fopen);
 
-	if (func->type != ZEND_USER_FUNCTION) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s(%s, %s) failed: \"%s\" is an internal function!",
-							get_active_function_name(TSRMLS_C),
-							old_fname,  new_fname, old_fname);
-		RETVAL_FALSE;
-		goto sqreenOn_end;
-	}
+	zend_hash_add(EG(function_table), s_fopen, fopen_sqreen);
 
-	if (zend_hash_find(EG(function_table), new_fname, new_fname_len + 1, (void **) &dummy_func) == SUCCESS) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s(%s, %s) failed: %s already exists!",
-							get_active_function_name(TSRMLS_C),
-							old_fname,  new_fname, new_fname);
-		RETVAL_FALSE;
-		goto sqreenOn_end;
-	}
-
-	if (zend_hash_add(EG(function_table), new_fname, new_fname_len + 1, func, sizeof(zend_function), NULL)
-			== FAILURE) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() failed to insert %s into EG(function_table)",
-							get_active_function_name(TSRMLS_C), new_fname);
-		RETVAL_FALSE;
-		goto sqreenOn_end;
-	}
-
-	/* NOTE(cjiang): This line of code is our fix for APD's rename_function. */
-	function_add_ref(func);
-
-	if (zend_hash_del(EG(function_table), old_fname, old_fname_len + 1) == FAILURE) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s() failed to remove %s from function table",\
-							get_active_function_name(TSRMLS_C), old_fname);
-
-		zend_hash_del(EG(function_table), new_fname, new_fname_len + 1);
-		RETVAL_FALSE;
-		goto sqreenOn_end;
-	}
-	RETVAL_TRUE;
-
-sqreenOn_end:
-	free(old_fname);
-	free(new_fname);
-
+	zval_dtor_func(fopen);
+	zval_dtor_func(fopen_sqreen);
+	zend_string_release(s_fopen);
+	zend_string_release(s_fopen_sqreen);
 }
 
 PHP_FUNCTION(sqreenOff)
