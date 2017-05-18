@@ -78,58 +78,89 @@ PHP_FUNCTION(confirm_sqreen_compiled)
    follow this convention for the convenience of others editing your code.
    */
 
+// Function replacing fopen
+//PHP_FUNCTION(fopen_sqreen)
+//{
+//	printf("Sqreen: fopen hooked\n");
+
+//	zval params[2];
+//	zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "zz", &params[0], &params[1]);
+
+//	int param_count = 2;
+//	zval retval;
+//	ZVAL_NULL(&retval);
+//	zval fname;
+//	ZVAL_STRING(&fname, "php_if_fopen");
+
+//	printf("Sqreen: Calling fopen\n");
+//	call_user_function(CG(function_table), NULL /* no object */, &fname, &retval, param_count, params);
+//	printf("Sqreen: fopen end\n");
+
+//	//zval_dtor(&retval);
+//	zval_dtor(&params[0]);
+//	zval_dtor(&params[1]);
+//	zval_dtor(&fname);
+//	
+//	RETVAL_ZVAL(&retval, 1, 1);
+//}
+
 PHP_FUNCTION(fopen_sqreen)
 {
-	printf("Calling fopen\n");
+	printf("Sqreen: fopen hooked\n");
 
-  //zval *params = { to_zval, from_zval, msg_zval };
-  //zend_uint param_count = 3;
-  //zval *retval_ptr;
+	zval retval;
+	char *params[2];
+	size_t params_len[2];
+	zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &params[0], &params_len[0], &params[1], &params_len[1]);
+	FILE *file = fopen(params[0], params[1]);
+	php_stream* stream = php_stream_fopen_from_file(file, params[1]);
 
-  //zval function_name;
-  //INIT_ZVAL(function_name);
-  //ZVAL_STRING(&function_name, "mail", 1);
-
-  //if (call_user_function(
-  //			        CG(function_table), NULL /* no object */, &function_name,
-  //					        retval_ptr, param_count, params TSRMLS_CC
-  //							    ) == SUCCESS
-  //   ) {
-  //	    /* do something with retval_ptr here if you like */
-  //}
-
-  ///* don't forget to free the zvals */
-  //zval_ptr_dtor(&retval_ptr);
-  //zval_dtor(&function_name);
+	php_stream_to_zval(stream, &retval);
+    RETVAL_ZVAL(&retval, 1, 1);
 }
 
+zval *real_fopen = NULL;
 
 PHP_FUNCTION(sqreenOn)
 {
-	printf("Calling sqreenOn\n");
-	zval *fopen, *fopen_sqreen;
+	zval *fopen_sqreen;
 	zend_string *s_fopen = zend_string_init("fopen", strlen("fopen"), 0);
 	zend_string *s_fopen_sqreen = zend_string_init("fopen_sqreen", strlen("fopen_sqreen"), 0);
+	zend_string *s_real_fopen = zend_string_init("_real_fopen", strlen("_real_fopen"), 0);
 
 	// Getting functions from zend hashtable
-	fopen 		 = zend_hash_find(EG(function_table), s_fopen);
+	real_fopen = zend_hash_find(EG(function_table), s_fopen);
 	fopen_sqreen = zend_hash_find(EG(function_table), s_fopen_sqreen);
 
 	// Renaming fopen
-	zend_hash_del(EG(function_table), s_fopen);
-	zend_hash_add(EG(function_table), s_fopen_sqreen, fopen);
+	// TODO: investigate on why add/add_new does not work
+	zval res;
+	compare_function(&res, real_fopen, zend_hash_update(EG(function_table), s_real_fopen, real_fopen));
+	if (Z_LVAL_P(&res) != 0)
+		 printf("Fail to insert old fopen\n");
 
-	zend_hash_add(EG(function_table), s_fopen, fopen_sqreen);
+	// Adding fopen_sqreen as fopen
+	compare_function(&res, real_fopen, zend_hash_update(EG(function_table), s_fopen, fopen_sqreen));
+	if (Z_LVAL_P(&res) != 0)
+		 printf("Fail to replace fopen\n");
 
-	zval_dtor_func(fopen);
-	zval_dtor_func(fopen_sqreen);
-	zend_string_release(s_fopen);
-	zend_string_release(s_fopen_sqreen);
+////zval_dtor(fopen_sqreen);
+////zend_string_release(s_fopen);
+////zend_string_release(s_fopen_sqreen);
 }
+
+#include <assert.h>
 
 PHP_FUNCTION(sqreenOff)
 {
-	RETURN_STRING("Hello world");
+	zend_string *s_fopen = zend_string_init("fopen", strlen("fopen"), 0);
+	zend_string_addref(s_fopen);
+	zval res;
+	compare_function(&res, real_fopen, zend_hash_update(EG(function_table), s_fopen, real_fopen));
+	if (Z_LVAL_P(&res) != 0)
+		 printf("Fail to reinsert old fopen\n");
+	//zend_string_release(s_fopen);
+////RETVAL_ZVAL(real_fopen, 2, 2);
 }
 
 
