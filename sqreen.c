@@ -144,9 +144,9 @@ PHP_FUNCTION(sqreenOn)
 	if (Z_LVAL_P(&res) != 0)
 		 printf("Fail to replace fopen\n");
 
-////zval_dtor(fopen_sqreen);
-////zend_string_release(s_fopen);
-////zend_string_release(s_fopen_sqreen);
+    zval_dtor(fopen_sqreen);
+    zend_string_release(s_fopen);
+    zend_string_release(s_fopen_sqreen);
 }
 
 #include <assert.h>
@@ -159,8 +159,7 @@ PHP_FUNCTION(sqreenOff)
 	compare_function(&res, real_fopen, zend_hash_update(EG(function_table), s_fopen, real_fopen));
 	if (Z_LVAL_P(&res) != 0)
 		 printf("Fail to reinsert old fopen\n");
-	//zend_string_release(s_fopen);
-////RETVAL_ZVAL(real_fopen, 2, 2);
+	zend_string_release(s_fopen);
 }
 
 
